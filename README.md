@@ -44,7 +44,7 @@ A user hits `http://<vm-ip>/`, which lands on gunicorn running as a systemd serv
 ## Repository structure
 
 ```
-se4220-final-project/
+422FINAL/
 ├── README.md                       — this file
 ├── app/
 │   ├── gallery/                    — Flask application (Project 4 code, unchanged)
