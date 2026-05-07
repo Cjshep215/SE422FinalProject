@@ -1,0 +1,21 @@
+# ---------------------------------------------------------------------------
+# terraform.tfvars.example
+# ---------------------------------------------------------------------------
+# Copy this file to terraform.tfvars and fill in your values.
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# Only project_id is required. Everything else has sensible defaults
+# matching the assignment requirements.
+# ---------------------------------------------------------------------------
+
+# REQUIRED
+project_id = "your-gcp-project-id-here"
+
+# OPTIONAL OVERRIDES (defaults shown)
+# region          = "us-central1"
+# zone            = "us-central1-a"
+# vm_machine_type = "e2-standard-2"
+# db_tier         = "db-n1-standard-1"
+# subnet_cidr     = "10.0.0.0/16"
+# app_title       = "SkyFrame Gallery"
+# admin_email     = "you@example.com"

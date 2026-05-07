@@ -1,0 +1,40 @@
+# Terraform local files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+
+# Variable files (may contain secrets)
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Build artifacts (zipped app)
+.terraform-build/
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Python bytecode (in app/)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+instance/
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

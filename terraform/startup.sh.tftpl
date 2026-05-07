@@ -1,0 +1,142 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# VM startup script (rendered by Terraform's templatefile())
+# ---------------------------------------------------------------------------
+# Runs on every VM boot. Idempotent: safe to re-run after a reboot.
+#
+# Steps:
+#   1. Install OS packages (python, unzip)
+#   2. Download the Flask app zip from the staging bucket
+#   3. Create a venv and install pip dependencies
+#   4. Fetch DB password & Flask SECRET_KEY from Secret Manager
+#   5. Write a systemd unit and start gunicorn
+#
+# Logs go to /var/log/gallery-startup.log. Tail with:
+#   gcloud compute ssh ${vm_name} --zone=${zone} -- "sudo tail -f /var/log/gallery-startup.log"
+# ---------------------------------------------------------------------------
+
+set -euo pipefail
+exec > >(tee -a /var/log/gallery-startup.log) 2>&1
+echo "=== Gallery startup script started at $(date -u) ==="
+
+# ── 1. Install OS dependencies ─────────────────────────────────────────────
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get install -y --no-install-recommends \
+  python3 \
+  python3-venv \
+  python3-pip \
+  python3-dev \
+  unzip \
+  build-essential \
+  libjpeg-dev \
+  zlib1g-dev
+
+# ── 2. Create app user & directories ───────────────────────────────────────
+if ! id gallery >/dev/null 2>&1; then
+  useradd -m -s /bin/bash gallery
+fi
+mkdir -p /opt/gallery
+chown gallery:gallery /opt/gallery
+
+# ── 3. Download app code from staging bucket ───────────────────────────────
+echo "Downloading app archive: gs://${staging_bucket}/${app_archive_name}"
+gsutil cp "gs://${staging_bucket}/${app_archive_name}" /tmp/app.zip
+rm -rf /opt/gallery/app
+mkdir -p /opt/gallery/app
+unzip -o /tmp/app.zip -d /opt/gallery/app
+chown -R gallery:gallery /opt/gallery/app
+
+# ── 4. Set up venv & install Python dependencies ───────────────────────────
+if [ ! -d /opt/gallery/.venv ]; then
+  sudo -u gallery python3 -m venv /opt/gallery/.venv
+fi
+sudo -u gallery /opt/gallery/.venv/bin/pip install --upgrade pip
+sudo -u gallery /opt/gallery/.venv/bin/pip install -r /opt/gallery/app/requirements.txt
+
+# ── 5. Fetch secrets from Secret Manager ───────────────────────────────────
+# gcloud is pre-installed on Google's Debian image. Auth uses the VM's
+# attached service account via metadata server (no key file needed).
+echo "Fetching secrets from Secret Manager..."
+DB_PASSWORD=$(gcloud secrets versions access latest \
+  --secret="${db_password_secret}" \
+  --project="${project_id}")
+FLASK_SECRET_KEY=$(gcloud secrets versions access latest \
+  --secret="${flask_secret_key_secret}" \
+  --project="${project_id}")
+
+# Write env file (mode 600, owned by root) - read by systemd
+cat > /etc/gallery.env <<EOF
+APP_ENV=production
+APP_TITLE=${app_title}
+SECRET_KEY=$FLASK_SECRET_KEY
+DB_HOST=${db_host}
+DB_PORT=3306
+DB_NAME=${db_name}
+DB_USER=${db_user}
+DB_PASSWORD=$DB_PASSWORD
+PHOTO_BUCKET=${photo_bucket}
+STORAGE_BACKEND=gcs
+SESSION_COOKIE_SECURE=false
+AUTO_CREATE_ADMIN=true
+ADMIN_EMAIL=${admin_email}
+ADMIN_PASSWORD=$DB_PASSWORD
+EOF
+chmod 600 /etc/gallery.env
+
+# ── 6. Write & start the systemd service ───────────────────────────────────
+# CAP_NET_BIND_SERVICE lets gunicorn bind to port 80 without running as root.
+cat > /etc/systemd/system/gallery.service <<'SVCEOF'
+[Unit]
+Description=Photo Gallery Flask App (gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gallery
+Group=gallery
+WorkingDirectory=/opt/gallery/app
+EnvironmentFile=/etc/gallery.env
+ExecStart=/opt/gallery/.venv/bin/gunicorn \
+  --bind 0.0.0.0:80 \
+  --workers 3 \
+  --threads 2 \
+  --timeout 60 \
+  --access-logfile - \
+  --error-logfile - \
+  main:app
+Restart=always
+RestartSec=5
+
+# Allow non-root user to bind to port 80
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+
+# Hardening
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/gallery /tmp
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+systemctl daemon-reload
+systemctl enable gallery.service
+systemctl restart gallery.service
+
+# ── 7. Wait for app to come up & log final status ──────────────────────────
+echo "Waiting for app to respond on /healthz..."
+for i in {1..30}; do
+  if curl -fs http://127.0.0.1/healthz >/dev/null 2>&1; then
+    echo "✓ App is healthy."
+    break
+  fi
+  sleep 2
+done
+
+echo "=== Startup completed at $(date -u) ==="
+systemctl status gallery.service --no-pager || true

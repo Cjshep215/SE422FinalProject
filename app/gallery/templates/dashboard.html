@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="dashboard-grid">
+    <article class="panel panel--upload">
+      <div class="panel__header">
+        <p class="eyebrow">Upload</p>
+        <h1>Build your gallery</h1>
+      </div>
+      <form class="stack-form" method="post" action="{{ url_for('gallery.upload_photos') }}" enctype="multipart/form-data">
+        <label>
+          <span>Photos</span>
+          <input type="file" name="photos" accept="image/*" multiple required>
+          <small>Select one or many images at once.</small>
+        </label>
+        <label>
+          <span>Title</span>
+          <input type="text" name="title" placeholder="Optional shared title">
+          <small>When you upload multiple files, the app appends a number automatically.</small>
+        </label>
+        <label>
+          <span>Description</span>
+          <textarea name="description" rows="4" placeholder="Add a short note, location, or subject"></textarea>
+        </label>
+        <button class="solid-button" type="submit">Upload photos</button>
+      </form>
+    </article>
+
+    <article class="panel panel--library">
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Library</p>
+          <h2>Your photo collection</h2>
+        </div>
+        <span class="count-pill">{{ photos|length }} result{% if photos|length != 1 %}s{% endif %}</span>
+      </div>
+
+      <form class="search-form" method="get" action="{{ url_for('gallery.dashboard') }}">
+        <input type="search" name="q" value="{{ query_text }}" placeholder="Search by title, description, or filename">
+        <button class="ghost-button" type="submit">Search</button>
+      </form>
+
+      {% if photos %}
+        <div class="photo-grid">
+          {% for photo in photos %}
+            <article class="photo-card">
+              <div class="photo-card__meta">
+                <p class="photo-card__title">{{ photo.title }}</p>
+                <p class="photo-card__info">{{ photo.original_filename }} · {{ photo.width }}x{{ photo.height }}</p>
+                {% if photo.description %}
+                  <p class="photo-card__description">{{ photo.description }}</p>
+                {% endif %}
+              </div>
+              <div class="photo-card__actions">
+                <span>{{ photo.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+                <a class="solid-button" href="{{ url_for('gallery.download_photo', photo_id=photo.id) }}">Download</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h3>No photos yet</h3>
+          <p>Upload your first image or widen your search query.</p>
+        </div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

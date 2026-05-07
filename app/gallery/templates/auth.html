@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="auth-layout">
+    <article class="auth-card">
+      {% if mode == "register" %}
+        <p class="eyebrow">New-user access</p>
+        <h1>Create your gallery account</h1>
+        <p>Every user gets their own searchable photo collection.</p>
+        <form class="stack-form" method="post">
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" placeholder="you@example.com" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" minlength="8" required>
+          </label>
+          <label>
+            <span>Confirm password</span>
+            <input type="password" name="confirm_password" minlength="8" required>
+          </label>
+          <button class="solid-button" type="submit">Create account</button>
+        </form>
+        <p class="form-footer">Already registered? <a href="{{ url_for('gallery.login') }}">Sign in</a>.</p>
+      {% else %}
+        <p class="eyebrow">Welcome back</p>
+        <h1>Sign in to your gallery</h1>
+        <p>Upload, search, and download your photos from one place.</p>
+        <form class="stack-form" method="post">
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" placeholder="you@example.com" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" minlength="8" required>
+          </label>
+          <button class="solid-button" type="submit">Sign in</button>
+        </form>
+        <p class="form-footer">Need an account? <a href="{{ url_for('gallery.register') }}">Create one</a>.</p>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}
+

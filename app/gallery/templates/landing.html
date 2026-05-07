@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero__copy">
+      <p class="eyebrow">Flask + App Engine + Cloud SQL</p>
+      <h1>Upload, search, and download photos without managing servers.</h1>
+      <p class="hero__body">
+        This gallery is built for the SE 4220 App Engine assignment: user accounts,
+        per-user photo libraries, multi-file uploads, search, and protected downloads.
+      </p>
+      <div class="hero__actions">
+        <a class="solid-button" href="{{ url_for('gallery.register') }}">Create a new account</a>
+        <a class="ghost-button" href="{{ url_for('gallery.login') }}">I already have an account</a>
+      </div>
+    </div>
+
+    <div class="hero__panel">
+      <div class="metric-card">
+        <span>Deployment target</span>
+        <strong>Google App Engine</strong>
+      </div>
+      <div class="metric-card">
+        <span>Relational data</span>
+        <strong>Cloud SQL MySQL</strong>
+      </div>
+      <div class="metric-card">
+        <span>Photo storage</span>
+        <strong>Cloud Storage bucket</strong>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
